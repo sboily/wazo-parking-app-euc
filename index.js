@@ -7,6 +7,9 @@ const app = new App();
 
 const parkingList = document.getElementById('parking');
 
+const emptyCallsRow = '<tr id="nocalls"><td colspan="6">No calls found.</td></tr>';
+const emptyParkedCallsRow = '<tr id="noparkedcalls"><td colspan="6">No parked calls found.</td></tr>';
+
 app.onIframeMessage = (msg) => {
   switch(msg.name) {
     case "parking_parked_call":
@@ -46,7 +49,7 @@ const updateCall = (payload) => {
   const talking_to_id = Object.keys(payload.data.talking_to);
   if (conversation_id == call_id) {
     setParkingBtn(call_id, talking_to_id); 
-  }
+  };
 };
 
 const setParkingBtn = (call_id, talking_to_id) => {
@@ -62,13 +65,20 @@ const removeCall = (payload) => {
   const row = document.getElementById(call_id);
   if (row) {
     row.parentNode.removeChild(row);
-  }
+  };
+
+  const tbody = document.getElementById('currentCalls');
+  if (tbody.rows.length === 0) {
+    tbody.innerHTML = emptyCallsRow;
+  };
 };
 
 const addCall = (payload) => {
   const participant = payload.data || payload;
   const currentCallsTableBody = document.getElementById('currentCalls');
   const park_call_id = participant.conversation_id;
+  const emptyCallsRow = document.getElementById('nocalls');
+  emptyCallsRow.parentNode.removeChild(emptyCallsRow);
 
   currentCallsTableBody.innerHTML += `
     <tr id=${participant.call_id}>
@@ -97,12 +107,21 @@ const setEventParkingBtn = (park_call_id) => {
 const removeCallInParking = (payload) => {
   const participant = `park-${payload.data.parkee_uniqueid}`;
   const row = document.getElementById(participant);
-  row.parentNode.removeChild(row);
+  if (row) {
+    row.parentNode.removeChild(row);
+  };
+
+  const tbody = document.getElementById('currentParkedCalls');
+  if (tbody.rows.length === 0) {
+    tbody.innerHTML = emptyParkedCallsRow;
+  };
 };
 
 const addCallInParking = (payload) => {
   const participant = payload.data || payload;
-  const parkingTableBody = document.getElementById('parkingCalls');
+  const parkingTableBody = document.getElementById('currentParkedCalls');
+  const emptyParkedCallsRow = document.getElementById('noparkedcalls');
+  emptyParkedCallsRow.parentNode.removeChild(emptyParkedCallsRow);
 
   parkingTableBody.innerHTML += `
     <tr id=park-${participant.parkee_uniqueid}>
@@ -231,7 +250,7 @@ const displayParking = (parking) => {
           <th>Action</th>
         </tr>
       </thead>
-      <tbody id="currentCalls"></tbody>
+      <tbody id="currentCalls">${emptyCallsRow}</tbody>
     </table>
   `;
 
@@ -248,7 +267,7 @@ const displayParking = (parking) => {
           <th>TimeOut</th>
         </tr>
       </thead>
-      <tbody id="parkingCalls"></tbody>
+      <tbody id="currentParkedCalls">${emptyParkedCallsRow}</tbody>
     </table>
   `;
 
@@ -256,7 +275,6 @@ const displayParking = (parking) => {
     const callParkRes = await getParkingCallList(`parkinglot-${park.id}`);
     if (callParkRes.length) {
       callParkRes.map((call) => {
-        console.log(call);
         addCallInParking(call);
       });
     };
