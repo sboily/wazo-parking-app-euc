@@ -36,6 +36,10 @@ app.onIframeMessage = (msg) => {
   }
 };
 
+const getCallOnParking = (number) => {
+  app.startCall({targets: [number], requestedModalities: ['audio']});
+};
+
 const updateCall = (payload) => {
   const call_id = payload.data.call_id;
   const conversation_id = payload.data.conversation_id;
@@ -62,7 +66,7 @@ const removeCall = (payload) => {
 };
 
 const addCall = (payload) => {
-  const participant = payload.data;
+  const participant = payload.data || payload;
   const currentCallsTableBody = document.getElementById('currentCalls');
   const park_call_id = participant.conversation_id;
 
@@ -97,12 +101,12 @@ const removeCallInParking = (payload) => {
 };
 
 const addCallInParking = (payload) => {
-  const participant = payload.data;
+  const participant = payload.data || payload;
   const parkingTableBody = document.getElementById('parkingCalls');
 
   parkingTableBody.innerHTML += `
     <tr id=park-${participant.parkee_uniqueid}>
-      <td>${participant.parking_space}</td>
+      <td><button id=unpark-${participant.parking_space}>${participant.parking_space}</button></td>
       <td>${participant.parkee_caller_id_name || '-'}</td>
       <td>${participant.parkee_caller_id_num}</td>
       <td>${participant.parkee_connected_line_name || '-'}</td>
@@ -111,6 +115,13 @@ const addCallInParking = (payload) => {
       <td>${participant.parking_timeout}</td>
     </tr>
   `;
+
+  const btnUnPark = document.getElementById(`unpark-${participant.parking_space}`);
+  btnUnPark.addEventListener('click', (event) => {
+      const btnId = event.target.id;
+      const number = btnId.split('-').pop();
+      getCallOnParking(number);
+  });
 
 };
 
@@ -124,6 +135,30 @@ const getParkingList = async () => {
   };
 
   return fetch(`https://${url}/api/calld/1.0/parking`, options).then(response => response.json());
+};
+
+const getParkingCallList = async (parkingLot) => {
+  const options = {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Auth-Token': session.token
+    }
+  };
+
+  return fetch(`https://${url}/api/calld/1.0/parking/${parkingLot}`, options).then(response => response.json());
+};
+
+const getCallsList = async () => {
+  const options = {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Auth-Token': session.token
+    }
+  };
+
+  return fetch(`https://${url}/api/calld/1.0/users/me/calls`, options).then(response => response.json());
 };
 
 const parkCall = async (parkingLot, call_id) => {
@@ -141,6 +176,14 @@ const parkCall = async (parkingLot, call_id) => {
   };
 
   return fetch(`https://${url}/api/calld/1.0/parking/${parkingLot}`, options).then(response => response.json());
+};
+
+const displayCalls = (calls) => {
+  if (calls.length) {
+    calls.map((call) => {
+      addCall(call);
+    });
+  };
 };
 
 const displayParking = (parking) => {
@@ -209,6 +252,16 @@ const displayParking = (parking) => {
     </table>
   `;
 
+  parking.map(async (park) => {
+    const callParkRes = await getParkingCallList(`parkinglot-${park.id}`);
+    if (callParkRes.length) {
+      callParkRes.map((call) => {
+        console.log(call);
+        addCallInParking(call);
+      });
+    };
+  });
+
 };
 
 (async() => {
@@ -218,5 +271,7 @@ const displayParking = (parking) => {
   url = context.user.host;
 
   const parkingRes = await getParkingList();
+  const callsRes = await getCallsList();
   displayParking(parkingRes.items);
+  displayCalls(callsRes.items);
 })();
