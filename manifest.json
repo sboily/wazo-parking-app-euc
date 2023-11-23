@@ -1,0 +1,37 @@
+{
+  "manifestVersion": "0.1",
+  "version": "1.0.0",
+  "id": "wazo-parking",
+  "packageName": "com.wazo.parking",
+  "productType": "app",
+  "developer": {
+    "name": "Wazo",
+    "websiteUrl": "https://wazo.io/",
+    "privacyUrl": "https://wazo.io/privacy"
+  },
+  "name": {
+    "short": "Wazo parking",
+    "full": "Wazo parking integration"
+  },
+  "description": {
+    "short": "Parking integration",
+    "full": "Control your parking"
+  },
+  "icons": {
+    "outline": "",
+    "color": "black"
+  },
+  "accentColor": "green",
+  "staticTabs": [
+    {
+      "entityId": "parking",
+      "context": [
+        "sidebarTab"
+      ],
+      "name": "Parking",
+      "contentUrl": "./index.html",
+      "icon": "./logo.svg"
+    }
+  ],
+  "backgroundScript": "./background.js"
+}
