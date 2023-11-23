@@ -8,7 +8,7 @@ const app = new App();
 const parkingList = document.getElementById('parking');
 
 const emptyCallsRow = '<tr id="nocalls"><td colspan="6">No calls found.</td></tr>';
-const emptyParkedCallsRow = '<tr id="noparkedcalls"><td colspan="6">No parked calls found.</td></tr>';
+const emptyParkedCallsRow = '<tr id="noparkedcalls"><td colspan="7">No parked calls found.</td></tr>';
 
 app.onIframeMessage = (msg) => {
   switch(msg.name) {
