@@ -145,7 +145,9 @@ const addCallInParking = (payload) => {
   const participant = payload.data || payload;
   const parkingTableBody = document.getElementById('currentParkedCalls');
   const emptyParkedCallsRow = document.getElementById('noparkedcalls');
-  emptyParkedCallsRow.parentNode.removeChild(emptyParkedCallsRow);
+  if (emptyParkedCallsRow) {
+    emptyParkedCallsRow.parentNode.removeChild(emptyParkedCallsRow);
+  };
 
   if (participant.parkee_uniqueid) {
     parkingTableBody.innerHTML += `
