@@ -2,10 +2,12 @@ import { App } from 'https://cdn.jsdelivr.net/npm/@wazo/euc-plugins-sdk@0.0.20/l
 
 let url;
 let session;
+let parkingLotList = [];
 
 const app = new App();
 
 const parkingList = document.getElementById('parking');
+const activitiesList = document.getElementById('activities');
 
 const emptyCallsRow = '<tr id="nocalls"><td colspan="6">No calls found.</td></tr>';
 const emptyParkedCallsRow = '<tr id="noparkedcalls"><td colspan="7">No parked calls found.</td></tr>';
@@ -54,8 +56,10 @@ const updateCall = (payload) => {
 
 const setParkingBtn = (call_id, talking_to_id) => {
   const btnParkCall = document.getElementById(`btn-park-${call_id}`);
+  const selectParkCall = document.getElementById(`select-park-${call_id}`);
   if (btnParkCall) {
-    btnParkCall.id = talking_to_id;
+    btnParkCall.id = `btn-park-${talking_to_id}`;
+    selectParkCall.id = `select-park-${talking_to_id}`;
     setEventParkingBtn(btnParkCall.id);
   };
 };
@@ -78,13 +82,29 @@ const addCall = (payload) => {
   const currentCallsTableBody = document.getElementById('currentCalls');
   const park_call_id = participant.conversation_id;
   const emptyCallsRow = document.getElementById('nocalls');
-  emptyCallsRow.parentNode.removeChild(emptyCallsRow);
+  if (emptyCallsRow) {
+    emptyCallsRow.parentNode.removeChild(emptyCallsRow);
+  };
+
+  let parkingOption;
+  parkingLotList.map((park) => {
+    parkingOption += `<option value=${park.asterisk_name}>${park.name}</option>`;
+  });
 
   currentCallsTableBody.innerHTML += `
     <tr id=${participant.call_id}>
-      <td>${participant.caller_id_name}</td>
-      <td>${participant.caller_id_number}</td>
-      <td><button id=btn-park-${park_call_id}>Park call</button></td>
+      <td>${participant.peer_caller_id_name || "-"}</td>
+      <td>${participant.peer_caller_id_number}</td>
+      <td class="mui-form--inline">
+        <div class="mui-select">
+          <select id="select-park-${park_call_id}">
+            ${parkingOption}
+          </select>
+        </div>
+        &nbsp;
+        &nbsp;
+        <button id="btn-park-${park_call_id}" class="mui-btn mui-btn--small mui-btn--accent">Park call</button>
+      </td>
     </tr>
   `;
 
@@ -99,7 +119,8 @@ const setEventParkingBtn = (park_call_id) => {
     btnParkCall.addEventListener('click', async (event) => {
       const btnId = event.target.id;
       const parkCallId = btnId.split('-').pop();
-      await parkCall('parkinglot-1', parkCallId);
+      const parkingName = document.getElementById(`select-park-${parkCallId}`).value;
+      await parkCall(parkingName, parkCallId);
     });
   };
 };
@@ -125,7 +146,7 @@ const addCallInParking = (payload) => {
 
   parkingTableBody.innerHTML += `
     <tr id=park-${participant.parkee_uniqueid}>
-      <td><button id=unpark-${participant.parking_space}>${participant.parking_space}</button></td>
+      <td><button id=unpark-${participant.parking_space} class="mui-btn mui-btn--small mui-btn--primary">${participant.parking_space}</button></td>
       <td>${participant.parkee_caller_id_name || '-'}</td>
       <td>${participant.parkee_caller_id_num}</td>
       <td>${participant.parkee_connected_line_name || '-'}</td>
@@ -206,23 +227,30 @@ const displayCalls = (calls) => {
 };
 
 const displayParking = (parking) => {
-  let tableRows = '<tr><td colspan="6">No parking found.</td></tr>';
+  let tableRows = '<tr><td colspan="5">No parking found.</td></tr>';
 
   if (parking.length) {
     tableRows = parking
       .map(
         (park) => `
         <tr>
-            <td>${park.name}</td>
+            <td><b>${park.name}</b></td>
             <td>${park.extensions[0].exten}</td>
             <td>${park.slots_start}</td>
             <td>${park.slots_end}</td>
             <td>${park.timeout}</td>
-            <td>${park.music_on_hold}</td>
         </tr>
     `,
       )
       .join('');
+
+    parking.map((park) => {
+      parkingLotList.push({
+        id: park.id,
+        name: park.name,
+        asterisk_name: `parkinglot-${park.id}`
+      });
+    });
   };
 
   parkingList.innerHTML = `
@@ -234,14 +262,13 @@ const displayParking = (parking) => {
           <th>Slot start</th>
           <th>Slot end</th>
           <th>TimeOut</th>
-          <th>Music</th>
         </tr>
       </thead>
       <tbody>${tableRows}</tbody>
     </table>
   `;
 
-  parkingList.innerHTML += `
+  activitiesList.innerHTML = `
     <table class="mui-table mui-table--bordered">
       <thead>
         <tr>
@@ -254,7 +281,7 @@ const displayParking = (parking) => {
     </table>
   `;
 
-  parkingList.innerHTML += `
+  activitiesList.innerHTML += `
     <table class="mui-table mui-table--bordered">
       <thead>
         <tr>
