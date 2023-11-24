@@ -33,6 +33,7 @@ app.onIframeMessage = (msg) => {
       break;
     case "call_answered":
       addCall(msg);
+      setEventParkingBtn();
       break;
     case "call_updated":
       updateCall(msg);
@@ -52,7 +53,7 @@ const updateCall = (payload) => {
   const conversation_id = payload.data.conversation_id;
   const talking_to_id = Object.keys(payload.data.talking_to);
   if (conversation_id == call_id) {
-    setParkingBtn(call_id, talking_to_id); 
+    setParkingBtn(call_id, talking_to_id);
   };
 };
 
@@ -62,7 +63,7 @@ const setParkingBtn = (call_id, talking_to_id) => {
   if (btnParkCall) {
     btnParkCall.id = `btn-park-${talking_to_id}`;
     selectParkCall.id = `select-park-${talking_to_id}`;
-    setEventParkingBtn(btnParkCall.id);
+    setEventParkingBtn();
   };
 };
 
@@ -129,28 +130,28 @@ const addCall = (payload) => {
         </div>
         &nbsp;
         &nbsp;
-        <button id="btn-park-${park_call_id}" class="mui-btn mui-btn--small mui-btn--accent">Park call</button>
+        <button id="btn-park-${park_call_id}" class="mui-btn mui-btn--small mui-btn--accent btn-park">Park call</button>
       </td>
     </tr>
   `;
+};
 
-   setEventParkingBtn(park_call_id);
-
+const parkButtonAction = async (event) => {
+  const btnId = event.target.id;
+  const parkCallId = btnId.split('-').pop();
+  console.log('parkCallId', parkCallId);
+  const parkingName = document.getElementById(`select-park-${parkCallId}`).value;
+  const callbackChannelLine = document.getElementById(`select-line-park-${parkCallId}`).value;
+  const parkTimeout = document.getElementById(`select-park-timeout-${parkCallId}`).value;
+  await parkCall(parkingName, parkCallId, callbackChannelLine, parkTimeout);
 };
 
 // Remove old eventListener
-const setEventParkingBtn = (park_call_id) => {
-  const btnParkCall = document.getElementById(`btn-park-${park_call_id}`);
-  if (btnParkCall) {
-    btnParkCall.addEventListener('click', async (event) => {
-      const btnId = event.target.id;
-      const parkCallId = btnId.split('-').pop();
-      const parkingName = document.getElementById(`select-park-${parkCallId}`).value;
-      const callbackChannelLine = document.getElementById(`select-line-park-${parkCallId}`).value;
-      const parkTimeout = document.getElementById(`select-park-timeout-${parkCallId}`).value;
-      await parkCall(parkingName, parkCallId, callbackChannelLine, parkTimeout);
-    });
-  };
+const setEventParkingBtn = () => {
+  document.querySelectorAll('.btn-park').forEach(button => {
+    button.removeEventListener('click', parkButtonAction);
+    button.addEventListener('click', parkButtonAction);
+  });
 };
 
 const removeCallInParking = (payload) => {
@@ -261,6 +262,7 @@ const displayCalls = (calls) => {
     calls.map((call) => {
       addCall(call);
     });
+    setEventParkingBtn();
   };
 };
 
