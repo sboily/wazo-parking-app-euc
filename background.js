@@ -1,7 +1,6 @@
 import { App } from 'https://cdn.jsdelivr.net/npm/@wazo/euc-plugins-sdk@0.0.20/lib/esm/app.js';
 import 'https://cdn.jsdelivr.net/npm/@wazo/sdk';
 
-let url;
 const app = new App();
 
 // Need to be fixed on EUC SDK
@@ -24,7 +23,6 @@ Wazo.Websocket.ws.on('onmessage', payload => {
 (async () => {
   await app.initialize();
   const context = app.getContext();
-  url = context.app.extra.baseUrl;
 
   console.log('parking background - background launched');
 })();
