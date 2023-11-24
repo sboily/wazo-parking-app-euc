@@ -4,6 +4,7 @@ let url;
 let session;
 let parkingLotList = [];
 let counters = {};
+let endpoints = [];
 
 const app = new App();
 
@@ -92,6 +93,16 @@ const addCall = (payload) => {
     parkingOption += `<option value=${park.asterisk_name}>${park.name}</option>`;
   });
 
+  let lineOption;
+  endpoints.map((line) => {
+    lineOption += `<option value=${line.name}>Line ${line.id}</option>`;
+  });
+
+  let parkTimeoutOption;
+  for (let i=30; i <= 90; i += 5) {
+    parkTimeoutOption += `<option value=${i}>${i} secs</option>`;
+  }
+
   currentCallsTableBody.innerHTML += `
     <tr id=${participant.call_id}>
       <td>${participant.peer_caller_id_name || "-"}</td>
@@ -100,6 +111,20 @@ const addCall = (payload) => {
         <div class="mui-select">
           <select id="select-park-${park_call_id}">
             ${parkingOption}
+          </select>
+        </div>
+        &nbsp;
+        &nbsp;
+        <div class="mui-select">
+          <select id="select-line-park-${park_call_id}">
+            ${lineOption}
+          </select>
+        </div>
+        &nbsp;
+        &nbsp;
+        <div class="mui-select">
+          <select id="select-park-timeout-${park_call_id}">
+            ${parkTimeoutOption}
           </select>
         </div>
         &nbsp;
@@ -121,7 +146,9 @@ const setEventParkingBtn = (park_call_id) => {
       const btnId = event.target.id;
       const parkCallId = btnId.split('-').pop();
       const parkingName = document.getElementById(`select-park-${parkCallId}`).value;
-      await parkCall(parkingName, parkCallId);
+      const callbackChannelLine = document.getElementById(`select-line-park-${parkCallId}`).value;
+      const parkTimeout = document.getElementById(`select-park-timeout-${parkCallId}`).value;
+      await parkCall(parkingName, parkCallId, callbackChannelLine, parkTimeout);
     });
   };
 };
@@ -210,9 +237,11 @@ const getCallsList = async () => {
   return fetch(`https://${url}/api/calld/1.0/users/me/calls`, options).then(response => response.json());
 };
 
-const parkCall = async (parkingLot, call_id) => {
+const parkCall = async (parkingLot, call_id, callback_channel, parkTimeout) => {
   const payload = {
-    call_id: call_id
+    call_id: call_id,
+    callback_channel: callback_channel,
+    timeout: parkTimeout
   };
 
   const options = {
@@ -345,6 +374,14 @@ const stopCounter = (id) => {
   const context = app.getContext();
   session = context.user;
   url = context.user.host;
+  const lines = session.profile.lines;
+
+  for (let i = 0; i < lines.length; i++) {
+    let value = lines[i];
+    if (value.endpointSip) {
+      endpoints.push({id: i+1, name: `PJSIP/${value.endpointSip.name}`});
+    };
+  };
 
   const parkingRes = await getParkingList();
   const callsRes = await getCallsList();
