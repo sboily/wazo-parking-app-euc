@@ -3,6 +3,7 @@ import { App } from 'https://cdn.jsdelivr.net/npm/@wazo/euc-plugins-sdk@0.0.20/l
 let url;
 let session;
 let parkingLotList = [];
+let counters = {};
 
 const app = new App();
 
@@ -130,6 +131,8 @@ const removeCallInParking = (payload) => {
   const row = document.getElementById(participant);
   if (row) {
     row.parentNode.removeChild(row);
+    stopCounter(`timeout-${payload.data.parkee_uniqueid}`);
+    stopCounter(`duration-${payload.data.parkee_uniqueid}`);
   };
 
   const tbody = document.getElementById('currentParkedCalls');
@@ -144,25 +147,29 @@ const addCallInParking = (payload) => {
   const emptyParkedCallsRow = document.getElementById('noparkedcalls');
   emptyParkedCallsRow.parentNode.removeChild(emptyParkedCallsRow);
 
-  parkingTableBody.innerHTML += `
-    <tr id=park-${participant.parkee_uniqueid}>
-      <td><button id=unpark-${participant.parking_space} class="mui-btn mui-btn--small mui-btn--primary">${participant.parking_space}</button></td>
-      <td>${participant.parkee_caller_id_name || '-'}</td>
-      <td>${participant.parkee_caller_id_num}</td>
-      <td>${participant.parkee_connected_line_name || '-'}</td>
-      <td>${participant.parkee_connected_line_num}</td>
-      <td>${participant.parking_duration}</td>
-      <td>${participant.parking_timeout}</td>
-    </tr>
-  `;
+  if (participant.parkee_uniqueid) {
+    parkingTableBody.innerHTML += `
+      <tr id=park-${participant.parkee_uniqueid}>
+        <td><button id=unpark-${participant.parking_space} class="mui-btn mui-btn--small mui-btn--primary">${participant.parking_space}</button></td>
+        <td>${participant.parkee_caller_id_name || '-'}</td>
+        <td>${participant.parkee_caller_id_num}</td>
+        <td>${participant.parkee_connected_line_name || '-'}</td>
+        <td>${participant.parkee_connected_line_num}</td>
+        <td id=duration-${participant.parkee_uniqueid}>${participant.parking_duration}</td>
+        <td id=timeout-${participant.parkee_uniqueid}>${participant.parking_timeout}</td>
+      </tr>
+    `;
 
-  const btnUnPark = document.getElementById(`unpark-${participant.parking_space}`);
-  btnUnPark.addEventListener('click', (event) => {
-      const btnId = event.target.id;
-      const number = btnId.split('-').pop();
-      getCallOnParking(number);
-  });
+    startCounter(`timeout-${participant.parkee_uniqueid}`, participant.parking_timeout);
+    startCounter(`duration-${participant.parkee_uniqueid}`, participant.parking_duration, false);
 
+    const btnUnPark = document.getElementById(`unpark-${participant.parking_space}`);
+    btnUnPark.addEventListener('click', (event) => {
+        const btnId = event.target.id;
+        const number = btnId.split('-').pop();
+        getCallOnParking(number);
+    });
+  };
 };
 
 const getParkingList = async () => {
@@ -308,6 +315,28 @@ const displayParking = (parking) => {
   });
 
 };
+
+const startCounter = (id, seconds, countdown = true) => {
+  let counter = seconds;
+  const displayCounter = document.getElementById(id);
+
+  counters[id] = setInterval(() => {
+    if (displayCounter) {
+      displayCounter.innerHTML = counter;
+    };
+    countdown ? counter-- : counter++;
+
+    if (countdown && counter < 0) {
+      stopCounter(id);
+    };
+  }, 1000);
+};
+
+const stopCounter = (id) => {
+  clearInterval(counters[id]);
+  console.log(`Counter ${id} stopped.`);
+  delete counters[id];
+}
 
 (async() => {
   await app.initialize();
