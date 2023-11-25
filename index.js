@@ -1,7 +1,5 @@
-import { App } from 'https://cdn.jsdelivr.net/npm/@wazo/euc-plugins-sdk@0.0.20/lib/esm/app.js';
+import { App } from 'https://cdn.jsdelivr.net/npm/@wazo/euc-plugins-sdk@0.0.22/lib/esm/app.js';
 
-let url;
-let session;
 let parkingLotList = [];
 let counters = {};
 let endpoints = [];
@@ -41,7 +39,25 @@ app.onIframeMessage = (msg) => {
     case "call_ended":
       removeCall(msg);
       break;
+    case "getParkingList":
+      displayParking(msg.data.items);
+      break;
+    case "getCallsList":
+      displayCalls(msg.data.items);
+      break;
+    case "getParkingCallList":
+      addCallsInParking(msg.data);
+      break;
   }
+};
+
+
+const addCallsInParking = (calls) => {
+  if (calls.length) {
+    calls.map((call) => {
+      addCallInParking(call);
+    });
+  };
 };
 
 const getCallOnParking = (number) => {
@@ -60,9 +76,13 @@ const updateCall = (payload) => {
 const setParkingBtn = (call_id, talking_to_id) => {
   const btnParkCall = document.getElementById(`btn-park-${call_id}`);
   const selectParkCall = document.getElementById(`select-park-${call_id}`);
+  const selectLineParkCall = document.getElementById(`select-line-park-${call_id}`);
+  const selectParkTimeout = document.getElementById(`select-park-timeout-${call_id}`);
   if (btnParkCall) {
     btnParkCall.id = `btn-park-${talking_to_id}`;
     selectParkCall.id = `select-park-${talking_to_id}`;
+    selectLineParkCall.id = `select-line-park-${talking_to_id}`;
+    selectParkTimeout.id = `select-park-timeout-${talking_to_id}`;
     setEventParkingBtn();
   };
 };
@@ -139,11 +159,10 @@ const addCall = (payload) => {
 const parkButtonAction = async (event) => {
   const btnId = event.target.id;
   const parkCallId = btnId.split('-').pop();
-  console.log('parkCallId', parkCallId);
   const parkingName = document.getElementById(`select-park-${parkCallId}`).value;
   const callbackChannelLine = document.getElementById(`select-line-park-${parkCallId}`).value;
   const parkTimeout = document.getElementById(`select-park-timeout-${parkCallId}`).value;
-  await parkCall(parkingName, parkCallId, callbackChannelLine, parkTimeout);
+  app.sendMessageToBackground({name: 'parkCall', value: [parkingName, parkCallId, callbackChannelLine, parkTimeout]});
 };
 
 // Remove old eventListener
@@ -200,61 +219,6 @@ const addCallInParking = (payload) => {
         getCallOnParking(number);
     });
   };
-};
-
-const getParkingList = async () => {
-  const options = {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Auth-Token': session.token
-    }
-  };
-
-  return fetch(`https://${url}/api/calld/1.0/parking`, options).then(response => response.json());
-};
-
-const getParkingCallList = async (parkingLot) => {
-  const options = {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Auth-Token': session.token
-    }
-  };
-
-  return fetch(`https://${url}/api/calld/1.0/parking/${parkingLot}`, options).then(response => response.json());
-};
-
-const getCallsList = async () => {
-  const options = {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Auth-Token': session.token
-    }
-  };
-
-  return fetch(`https://${url}/api/calld/1.0/users/me/calls`, options).then(response => response.json());
-};
-
-const parkCall = async (parkingLot, call_id, callback_channel, parkTimeout) => {
-  const payload = {
-    call_id: call_id,
-    callback_channel: callback_channel,
-    timeout: parkTimeout
-  };
-
-  const options = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Auth-Token': session.token
-    },
-    body: JSON.stringify(payload)
-  };
-
-  return fetch(`https://${url}/api/calld/1.0/parking/${parkingLot}`, options).then(response => response.json());
 };
 
 const displayCalls = (calls) => {
@@ -338,13 +302,8 @@ const displayParking = (parking) => {
     </table>
   `;
 
-  parking.map(async (park) => {
-    const callParkRes = await getParkingCallList(`parkinglot-${park.id}`);
-    if (callParkRes.length) {
-      callParkRes.map((call) => {
-        addCallInParking(call);
-      });
-    };
+  parking.map((park) => {
+    app.sendMessageToBackground({name: 'getParkingCallList', value: `parkinglot-${park.id}`});
   });
 
 };
@@ -367,26 +326,23 @@ const startCounter = (id, seconds, countdown = true) => {
 
 const stopCounter = (id) => {
   clearInterval(counters[id]);
-  console.log(`Counter ${id} stopped.`);
   delete counters[id];
-}
+};
 
-(async() => {
-  await app.initialize();
-  const context = app.getContext();
-  session = context.user;
-  url = context.user.host;
-  const lines = session.profile.lines;
-
+const populateEndpoints = (lines) => {
   for (let i = 0; i < lines.length; i++) {
     let value = lines[i];
     if (value.endpointSip) {
       endpoints.push({id: i+1, name: `PJSIP/${value.endpointSip.name}`});
     };
   };
+};
 
-  const parkingRes = await getParkingList();
-  const callsRes = await getCallsList();
-  displayParking(parkingRes.items);
-  displayCalls(callsRes.items);
+(async() => {
+  await app.initialize();
+  const context = app.getContext();
+
+  populateEndpoints(context.user.profile.lines);
+  app.sendMessageToBackground({name: 'getParkingList'});
+  app.sendMessageToBackground({name: 'getCallsList'});
 })();
