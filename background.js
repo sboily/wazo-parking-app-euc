@@ -76,7 +76,10 @@ Wazo.Websocket.ws.on('onmessage', payload => {
     case "parking_parked_call_swap":
     case "parking_parked_call_timeout":
     case "call_answered":
+      // FIXME: We need to improve the information in call object
+      answer_call_id = msg.data.conversation_id;
     case "call_updated":
+      // FIXME: We need to improve the information in call object
       answer_call_id = msg.data.conversation_id;
     case "call_ended":
       app.sendMessageToIframe(msg);
@@ -84,7 +87,19 @@ Wazo.Websocket.ws.on('onmessage', payload => {
   }
 });
 
+// FIXME: We need to improve the information in call object
 app.onCallAnswered = (call) =>  {
+  addParkingButtonOnCall(call);
+};
+
+// FIXME: We need to improve the information in call object
+app.onCallMade = (call) =>  {
+  addParkingButtonOnCall(call);
+};
+
+// FIXME: We need to add method on our SDK to help people to create button or other widget to control a call
+// FIXME: Remove hardcoded information and also find a way to know what is the callback channel we want to use.
+const addParkingButtonOnCall = (call) => {
   const div = document.createElement("div");
   div.className = 'div-btn-parking';
   const button = document.createElement("button");
@@ -96,6 +111,7 @@ app.onCallAnswered = (call) =>  {
       const parkingLot = "parkinglot-1";
       const callback_channel = endpoints[1].name;
       await parkCall(parkingLot, call_id, callback_channel, parkTimeout);
+      app.displayNotification("Parking action", "Call has been parked successfully!");
     });
 
   div.appendChild(button);
