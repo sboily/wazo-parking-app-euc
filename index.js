@@ -87,6 +87,8 @@ const setParkingBtn = (call_id, talking_to_id) => {
   };
 };
 
+
+// FIXME: Be carefull about race condition with multiple device
 const removeCall = (payload) => {
   const call_id = payload.data.call_id;
   const row = document.getElementById(call_id);
@@ -95,7 +97,7 @@ const removeCall = (payload) => {
   };
 
   const tbody = document.getElementById('currentCalls');
-  if (tbody.rows.length === 0) {
+  if (tbody && tbody.rows.length === 0) {
     tbody.innerHTML = emptyCallsRow;
   };
 };
@@ -122,6 +124,10 @@ const addCall = (payload) => {
   let parkTimeoutOption;
   for (let i=30; i <= 90; i += 5) {
     parkTimeoutOption += `<option value=${i}>${i} secs</option>`;
+  }
+
+  if (!currentCallsTableBody) {
+    return;
   }
 
   currentCallsTableBody.innerHTML += `
