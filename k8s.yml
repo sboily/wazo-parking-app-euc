@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: wazo-parking
+  namespace: ngrok-ingress-controller
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+  selector:
+    app: wazo-parking
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wazo-parking
+  namespace: ngrok-ingress-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wazo-parking
+  template:
+    metadata:
+      labels:
+        app: wazo-parking
+    spec:
+      containers:
+        - name: wazoparking
+          image: quintana/wazoparking:latest
+          ports:
+            - name: http
+              containerPort: 80
+---
+# ngrok Ingress Controller Configuration
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wazo-parking-ingress
+  namespace: ngrok-ingress-controller
+spec:
+  ingressClassName: ngrok
+  rules:
+    - host: parking.quintana.ngrok.app
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wazo-parking
+                port:
+                  number: 80
