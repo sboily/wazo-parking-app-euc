@@ -1,6 +1,5 @@
 import { App } from 'https://cdn.jsdelivr.net/npm/@wazo/euc-plugins-sdk@0.0.22/lib/esm/app.js';
-import 'https://cdn.jsdelivr.net/npm/@wazo/sdk';
-
+import 'https://cdn.jsdelivr.net/npm/@wazo/sdk@0.40.4/dist/wazo-sdk.min.js'
 
 let session;
 let url;
