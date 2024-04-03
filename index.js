@@ -191,9 +191,12 @@ const removeCallInParking = (data) => {
   };
 };
 
-const calculateSecondsFromTimestamp = (timestamp) => {
+const calculateSecondsFromTimestamp = (timestamp, timestamp_start) => {
     const timestampDate = new Date(timestamp);
-    const now = new Date();
+    let now = new Date(timestamp_start);
+    if (!timestamp_start) {
+      now = new Date();
+    }
     const differenceInSeconds = Math.abs(Math.floor((now - timestampDate) / 1000));
     return differenceInSeconds;
 }
@@ -207,10 +210,10 @@ const addCallInParking = (payload) => {
   };
 
   if (participant.call_id) {
-    const timeout = calculateSecondsFromTimestamp(participant.timeout_at);
+    const timeout = calculateSecondsFromTimestamp(participant.timeout_at, participant.parked_at || new Date());
     const duration = calculateSecondsFromTimestamp(participant.parked_at || new Date());
     parkingTableBody.innerHTML += `
-      <tr id=park-${participant.call_id}>
+      <tr class="mui--text-center" id=park-${participant.call_id}>
         <td><button id=unpark-${participant.slot} class="mui-btn mui-btn--small mui-btn--primary">${participant.slot}</button></td>
         <td>${participant.parkee_caller_id_name || '-'}</td>
         <td>${participant.parkee_caller_id_num || '-'}</td>
@@ -221,7 +224,6 @@ const addCallInParking = (payload) => {
       </tr>
     `;
 
-    startCounter(`timeout-${participant.call_id}`, timeout);
     startCounter(`duration-${participant.call_id}`, duration, false);
 
     const btnUnPark = document.getElementById(`unpark-${participant.slot}`);
