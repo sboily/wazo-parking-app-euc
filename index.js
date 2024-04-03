@@ -14,20 +14,17 @@ const emptyParkedCallsRow = '<tr id="noparkedcalls"><td colspan="7">No parked ca
 
 app.onIframeMessage = (msg) => {
   switch(msg.name) {
-    case "parking_parked_call":
-      addCallInParking(msg);
+    case "call_parked":
+      addCallInParking(msg.data);
       break;
-    case "parking_unparked_call":
-      removeCallInParking(msg);
+    case "call_unparked":
+      removeCallInParking(msg.data);
       break;
-    case "parking_parked_call_give_up":
-      removeCallInParking(msg);
+    case "parked_call_hungup":
+      removeCallInParking(msg.data);
       break;
-    case "parking_parked_call_swap":
-      console.log('SWAP !!!');
-      break;
-    case "parking_parked_call_timeout":
-      removeCallInParking(msg);
+    case "parked_call_timed_out":
+      removeCallInParking(msg.data);
       break;
     case "call_answered":
       addCall(msg);
@@ -52,9 +49,9 @@ app.onIframeMessage = (msg) => {
 };
 
 
-const addCallsInParking = (calls) => {
-  if (calls.length) {
-    calls.map((call) => {
+const addCallsInParking = (data) => {
+  if (data.calls.length > 0) {
+    data.calls.map((call) => {
       addCallInParking(call);
     });
   };
@@ -105,7 +102,7 @@ const removeCall = (payload) => {
 const addCall = (payload) => {
   const participant = payload.data || payload;
   const currentCallsTableBody = document.getElementById('currentCalls');
-  const park_call_id = participant.conversation_id;
+  const park_call_id = participant.call_id;
   const emptyCallsRow = document.getElementById('nocalls');
   if (emptyCallsRow) {
     emptyCallsRow.parentNode.removeChild(emptyCallsRow);
@@ -113,7 +110,7 @@ const addCall = (payload) => {
 
   let parkingOption;
   parkingLotList.map((park) => {
-    parkingOption += `<option value=${park.asterisk_name}>${park.name}</option>`;
+    parkingOption += `<option value=${park.id}>${park.name}</option>`;
   });
 
   let lineOption;
@@ -179,13 +176,13 @@ const setEventParkingBtn = () => {
   });
 };
 
-const removeCallInParking = (payload) => {
-  const participant = `park-${payload.data.parkee_uniqueid}`;
+const removeCallInParking = (data) => {
+  const participant = `park-${data.call_id}`;
   const row = document.getElementById(participant);
   if (row) {
     row.parentNode.removeChild(row);
-    stopCounter(`timeout-${payload.data.parkee_uniqueid}`);
-    stopCounter(`duration-${payload.data.parkee_uniqueid}`);
+    stopCounter(`timeout-${data.call_id}`);
+    stopCounter(`duration-${data.call_id}`);
   };
 
   const tbody = document.getElementById('currentParkedCalls');
@@ -193,6 +190,13 @@ const removeCallInParking = (payload) => {
     tbody.innerHTML = emptyParkedCallsRow;
   };
 };
+
+const calculateSecondsFromTimestamp = (timestamp) => {
+    const timestampDate = new Date(timestamp);
+    const now = new Date();
+    const differenceInSeconds = Math.abs(Math.floor((now - timestampDate) / 1000));
+    return differenceInSeconds;
+}
 
 const addCallInParking = (payload) => {
   const participant = payload.data || payload;
@@ -202,23 +206,25 @@ const addCallInParking = (payload) => {
     emptyParkedCallsRow.parentNode.removeChild(emptyParkedCallsRow);
   };
 
-  if (participant.parkee_uniqueid) {
+  if (participant.call_id) {
+    const timeout = calculateSecondsFromTimestamp(participant.timeout_at);
+    const duration = calculateSecondsFromTimestamp(participant.parked_at || new Date());
     parkingTableBody.innerHTML += `
-      <tr id=park-${participant.parkee_uniqueid}>
-        <td><button id=unpark-${participant.parking_space} class="mui-btn mui-btn--small mui-btn--primary">${participant.parking_space}</button></td>
+      <tr id=park-${participant.call_id}>
+        <td><button id=unpark-${participant.slot} class="mui-btn mui-btn--small mui-btn--primary">${participant.slot}</button></td>
         <td>${participant.parkee_caller_id_name || '-'}</td>
-        <td>${participant.parkee_caller_id_num}</td>
+        <td>${participant.parkee_caller_id_num || '-'}</td>
         <td>${participant.parkee_connected_line_name || '-'}</td>
-        <td>${participant.parkee_connected_line_num}</td>
-        <td id=duration-${participant.parkee_uniqueid}>${participant.parking_duration}</td>
-        <td id=timeout-${participant.parkee_uniqueid}>${participant.parking_timeout}</td>
+        <td>${participant.parkee_connected_line_num || '-'}</td>
+        <td id=duration-${participant.call_id}>${duration}</td>
+        <td id=timeout-${participant.call_id}>${timeout}</td>
       </tr>
     `;
 
-    startCounter(`timeout-${participant.parkee_uniqueid}`, participant.parking_timeout);
-    startCounter(`duration-${participant.parkee_uniqueid}`, participant.parking_duration, false);
+    startCounter(`timeout-${participant.call_id}`, timeout);
+    startCounter(`duration-${participant.call_id}`, duration, false);
 
-    const btnUnPark = document.getElementById(`unpark-${participant.parking_space}`);
+    const btnUnPark = document.getElementById(`unpark-${participant.slot}`);
     btnUnPark.addEventListener('click', (event) => {
         const btnId = event.target.id;
         const number = btnId.split('-').pop();
@@ -309,7 +315,7 @@ const displayParking = (parking) => {
   `;
 
   parking.map((park) => {
-    app.sendMessageToBackground({name: 'getParkingCallList', value: `parkinglot-${park.id}`});
+    app.sendMessageToBackground({name: 'getParkingCallList', value: park.id});
   });
 
 };

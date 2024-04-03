@@ -1,4 +1,4 @@
-import { App } from 'https://cdn.jsdelivr.net/npm/@wazo/euc-plugins-sdk@0.0.22/lib/esm/app.js';
+import { App } from 'https://cdn.jsdelivr.net/npm/@wazo/euc-plugins-sdk@0.0.23/lib/esm/app.js';
 import 'https://cdn.jsdelivr.net/npm/@wazo/sdk@0.40.4/dist/wazo-sdk.min.js'
 
 let session;
@@ -17,7 +17,8 @@ const getParkingList = async () => {
     }
   };
 
-  return fetch(`https://${url}/api/calld/1.0/parking`, options).then(response => response.json());
+  return fetch(`https://${url}/api/confd/1.1/parkinglots`, options).then(response => response.json());
+
 };
 
 const getParkingCallList = async (parkingLot) => {
@@ -29,7 +30,7 @@ const getParkingCallList = async (parkingLot) => {
     }
   };
 
-  return fetch(`https://${url}/api/calld/1.0/parking/${parkingLot}`, options).then(response => response.json());
+  return fetch(`https://${url}/api/calld/1.0/parkinglots/${parkingLot}`, options).then(response => response.json());
 };
 
 const getCallsList = async () => {
@@ -44,15 +45,17 @@ const getCallsList = async () => {
   return fetch(`https://${url}/api/calld/1.0/users/me/calls`, options).then(response => response.json());
 };
 
-const parkCall = async (parkingLot, call_id, callback_channel, parkTimeout) => {
+const parkCall = async (parkingLot, callId, callbackChannel, parkTimeout) => {
   const payload = {
-    call_id: call_id,
-    callback_channel: callback_channel,
-    timeout: parkTimeout
+    call_id: callId,
+    parking_id: parkingLot,
+    callback_channel: callbackChannel,
+    timeout: parkTimeout,
+    prefered_slot: null
   };
 
   const options = {
-    method: 'POST',
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       'X-Auth-Token': session.token
@@ -60,7 +63,7 @@ const parkCall = async (parkingLot, call_id, callback_channel, parkTimeout) => {
     body: JSON.stringify(payload)
   };
 
-  return fetch(`https://${url}/api/calld/1.0/parking/${parkingLot}`, options).then(response => response.json());
+  return fetch(`https://${url}/api/calld/1.0/users/me/calls/${callId}/park`, options).then(response => response.json());
 };
 
 
@@ -69,17 +72,16 @@ const parkCall = async (parkingLot, call_id, callback_channel, parkTimeout) => {
 Wazo.Websocket.ws.on('onmessage', payload => {
   const msg = JSON.parse(payload).data;
   switch(msg.name) {
-    case "parking_parked_call":
-    case "parking_unparked_call":
-    case "parking_parked_call_give_up":
-    case "parking_parked_call_swap":
-    case "parking_parked_call_timeout":
+    case "call_parked":
+    case "call_unparked":
+    case "parked_call_hungup":
+    case "parked_call_timed_out":
     case "call_answered":
       // FIXME: We need to improve the information in call object
-      answer_call_id = msg.data.conversation_id;
+      answer_call_id = msg.data.call_id;
     case "call_updated":
       // FIXME: We need to improve the information in call object
-      answer_call_id = msg.data.conversation_id;
+      answer_call_id = msg.data.call_id;
     case "call_ended":
       app.sendMessageToIframe(msg);
       break;
@@ -107,7 +109,7 @@ const addParkingButtonOnCall = (call) => {
   button.addEventListener('click', async () => {
       const call_id = answer_call_id;
       const parkTimeout = 45;
-      const parkingLot = "parkinglot-1";
+      const parkingLot = "1"; // FIXME: We need to find a way to know what is the parking lot we want to use.
       const callback_channel = endpoints[1].name;
       await parkCall(parkingLot, call_id, callback_channel, parkTimeout);
       app.displayNotification("Parking action", "Call has been parked successfully!");
@@ -157,6 +159,13 @@ const populateEndpoints = (lines) => {
   const context = app.getContext();
   session = context.user;
   url = context.user.host;
+
+  app.displayBanner({
+    url: `${context.app.extra.baseUrl}/banner.html`,
+    height: "50px",
+    width: "100px",
+    hideCloseButton: false
+  });
 
   populateEndpoints(session.profile.lines);
 
