@@ -215,10 +215,10 @@ const addCallInParking = (payload) => {
     parkingTableBody.innerHTML += `
       <tr class="mui--text-center" id=park-${participant.call_id}>
         <td><button id=unpark-${participant.slot} class="mui-btn mui-btn--small mui-btn--primary">${participant.slot}</button></td>
-        <td>${participant.parkee_caller_id_name || '-'}</td>
-        <td>${participant.parkee_caller_id_num || '-'}</td>
-        <td>${participant.parkee_connected_line_name || '-'}</td>
-        <td>${participant.parkee_connected_line_num || '-'}</td>
+        <td>${participant.caller_id_name || '-'}</td>
+        <td>${participant.caller_id_num || '-'}</td>
+        <td>${participant.parker_caller_id_name || '-'}</td>
+        <td>${participant.parker_caller_id_num || '-'}</td>
         <td id=duration-${participant.call_id}>${duration}</td>
         <td id=timeout-${participant.call_id}>${timeout}</td>
       </tr>
